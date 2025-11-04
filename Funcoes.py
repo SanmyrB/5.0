@@ -975,7 +975,7 @@ def calcular_evaporadores(
 
         vazao_list = np.zeros(quantidade + 1)
         brix_list = np.zeros(quantidade + 1)
-        vazVap_list = np.zeros(quantidade + 1)
+        vazVap_list = np.zeros(quantidade)
         Cp_list = np.zeros(quantidade + 1)
         ConsVap_list = np.zeros(quantidade)
         VapUtil_list = np.zeros(quantidade)
@@ -1013,7 +1013,7 @@ def calcular_evaporadores(
             vapGeradoTotal_list[i] = vapGeradoTotal
 
             if i == 0:
-                keySangria = 100 / 350
+                keySangria = 14 / 350
             elif i <= 2:
                 keySangria = 14 / 350
             else:

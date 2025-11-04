@@ -280,11 +280,6 @@ else:
                 
                 Evaporador = calcular_evaporadores(df_press_abs, Peneira_Rotativa['Peneira Rotativa']['Brix de Saída da Peneira Rotativa (º)'],Peneira_Rotativa['Peneira Rotativa']['Vazão de Caldo na Saída da Peneira Rotativa (ton/h)'], Temp_Said_Balao_Flash, Press_Vap_Escape, listaEvap=lista_para_calculo)
             
-    
-                """Cristalizador_Cozedores = calcular_processo_cozedores(Evaporador['Evaporadores']['Lista dos Brix do Caldo (º)'],
-                                                                    Evaporador['Evaporadores']['Vazões de Caldo (ton/h)'],
-                                                                    Brix_Said_CozA, Brix_Said_CozB, Brix_Said_Crist, Brix_Mel_A, Brix_Mel_Final)"""
-        
                 Simulacao = [
                     Extracao,
                     Aquecedor,
@@ -297,7 +292,6 @@ else:
                     Filtro_Prensa,
                     Peneira_Rotativa,
                     Evaporador,
-                    #Cristalizador_Cozedores
                 ]
 
                 st.session_state['Simulacao'] = Simulacao
@@ -528,6 +522,8 @@ else:
                 num_ef_BC = len(lista_para_calculo)
                 evaporadores_labels_BC = ['Inicial'] + [f'Evaporador {i}' for i in range(1, num_ef_BC+1)]
 
+                evaporadores_labels_Vap = [f'Evaporador {i}' for i in range(1, num_ef_BC + 1 )]
+
                 DF_EVAPORADOR = pd.DataFrame({
                     'Evaporador': evaporadores_labels_BC,
                     'Brix (º)': Evaporador['Evaporadores']['Brix Efeitos (º)'],
@@ -535,11 +531,40 @@ else:
                     'Temperatura do Caldo (ºC)': Evaporador['Evaporadores']['Lista de Temperatura em cada Efeito (ºC)']
                 })
 
-                DF_EVAPORADOR_temp = pd.DataFrame({
-
+                DF_EVAPORADOR_Vap = pd.DataFrame({
+                    'Evaporador': evaporadores_labels_Vap,
+                    'Entrada de Vapor': Evaporador['Evaporadores']['Lista Vapor Entrada por Efeito (kg/h)'],
+                    'Consumo de Vapor': Evaporador['Evaporadores']['Lista Consumo por Efeito (kg/h)'],
+                    'Vapor Gerado': Evaporador['Evaporadores']['Lista de Vapores Gerados (kg/h)'],
+                    'Vapor Útil': Evaporador['Evaporadores']['Lista de Vapor Útil (kg/h)'],
+                    'Sangrias': Evaporador['Evaporadores']['Lista de Sangrias em cada efeito (kg/h)'],
                 })
 
                 # ---------------- GRÁFICOS ----------------
+
+                col1, col2 = st.columns(2)
+
+                fig_temp_caldo = px.line(
+                    DF_EVAPORADOR, x='Evaporador',
+                    y='Vazão de Caldo (kg/h)',
+                    title='Vazão do Caldo em cada Efeito',
+                    text='Vazão de Caldo (kg/h)'
+                )
+
+                fig_temp_caldo.update_traces(textposition='top center', line=dict(color=cor_linha))
+                fig_temp_caldo.update_layout(yaxis_range=[0, max(DF_EVAPORADOR['Vazão de Caldo (kg/h)'])*1.2])
+                col1.plotly_chart(fig_temp_caldo, use_container_width=True)
+
+                fig_temp_temp = px.line(
+                    DF_EVAPORADOR, x='Evaporador',
+                    y='Temperatura do Caldo (ºC)',
+                    title='Temperatura do Caldo em cada Efeito',
+                    text='Temperatura do Caldo (ºC)'
+                )
+
+                fig_temp_temp.update_traces(textposition='top center', line=dict(color=cor_linha))
+                fig_temp_temp.update_layout(yaxis_range=[0, max(DF_EVAPORADOR['Temperatura do Caldo (ºC)'])*1.2])
+                col2.plotly_chart(fig_temp_temp, use_container_width=True)
 
                 fig_temp_brix = px.line(
                     DF_EVAPORADOR, x='Evaporador',
@@ -552,58 +577,37 @@ else:
                 fig_temp_brix.update_layout(yaxis_range=[0, max(DF_EVAPORADOR['Brix (º)'])*1.2])
                 st.plotly_chart(fig_temp_brix, use_container_width=True)
 
-                fig_temp_caldo = px.line(
-                    DF_EVAPORADOR, x='Evaporador',
-                    y='Vazão de Caldo (kg/h)',
-                    title='Vazão do Caldo em cada Efeito',
-                    text='Vazão de Caldo (kg/h)'
+                col1, col2 = st.columns(2)
+
+                fig_temp_vapor = px.bar(
+                    DF_EVAPORADOR_Vap, x='Evaporador',
+                    y='Entrada de Vapor',
+                    title='Entrada de Vapor em cada Efeito',
+                    text='Entrada de Vapor',
+                    color_discrete_sequence=[cor_barra]
                 )
 
-                fig_temp_caldo.update_traces(textposition='top center', line=dict(color=cor_linha))
-                fig_temp_caldo.update_layout(yaxis_range=[0, max(DF_EVAPORADOR['Vazão de Caldo (kg/h)'])*1.2])
-                st.plotly_chart(fig_temp_caldo, use_container_width=True)
+                fig_temp_vapor.update_layout(yaxis_range=[0, max(DF_EVAPORADOR_Vap['Entrada de Vapor'])*1.2])
+                fig_temp_vapor.update_traces(textposition='outside')
+                col1.plotly_chart(fig_temp_vapor, use_container_width=True)
 
-                fig_temp_temp = px.line(
-                    DF_EVAPORADOR, x='Evaporador',
-                    y='Temperatura do Caldo (ºC)',
-                    title='Temperatura do Caldo em cada Efeito',
-                    text='Temperatura do Caldo (ºC)'
+                fig_temp_Sangria = px.bar(
+                    DF_EVAPORADOR_Vap, x='Evaporador',
+                    y='Sangrias',
+                    title='Sangrias em cada Efeito',
+                    text='Sangrias',
+                    color_discrete_sequence=[cor_barra]
                 )
 
-                fig_temp_temp.update_traces(textposition='top center', line=dict(color=cor_linha))
-                fig_temp_temp.update_layout(yaxis_range=[0, max(DF_EVAPORADOR['Temperatura do Caldo (ºC)'])*1.2])
-                st.plotly_chart(fig_temp_temp, use_container_width=True)
-                    
+                fig_temp_Sangria.update_layout(yaxis_range=[0, max(DF_EVAPORADOR_Vap['Sangrias'])*1.2])
+                fig_temp_Sangria.update_traces(textposition='outside')
+                col2.plotly_chart(fig_temp_Sangria, use_container_width=True)
+
+
                 # ========== COZEDORES E CRISTALIZADOR ==========
         
                 # ---------------- MÉTRICAS ----------------
         
-                """st.header('Cozedores, Cristalizadores e Centrífugas')
-                st.error('Está sendo revisado o BM e BE.')
-                col1, col2, col3 = st.columns(3)
-                col1.subheader('Cozedor Massa B')
-                col1.metric('Vazão do Cozedor Massa B (ton/h)', f'{Cristalizador_Cozedores['Processo de Cozimento']['Vazão do Caldo (ton/h) - Cozedor B']:.2f}')
-                col2.subheader('Cristalizador Massa B')
-                col2.metric('Vazão do Cristalizador Massa B (ton/h)', f'{Cristalizador_Cozedores['Processo de Cozimento']['Vazão de Saída (ton/h) - Cristalizador B']:.2f}')
-                col3.subheader('Centrífuga B')
-                col3.metric('Vazão do Mel Final (ton/h)', f'{Cristalizador_Cozedores['Processo de Cozimento']['Vazão do Melaço Final (ton/h) - Centrífuga B']:.2f}')
-                
-                # ---------------- MÉTRICAS ----------------
-        
-                col1, col2, col3 = st.columns(3)
-                col1.subheader('Cozedor Massa A')
-                col1.metric('Vazão do Cozedor Massa A (ton/h)', f'{Cristalizador_Cozedores['Processo de Cozimento']['Vazão do Caldo (ton/h) - Cozedor A - II']:.2f}')
-                col2.subheader('Cristalizador Massa A')
-                col2.metric('Vazão do Cristalizador Massa A (ton/h)', f'{Cristalizador_Cozedores['Processo de Cozimento']['Vazão de Saída (ton/h) - Cristalizador A - II']:.2f}')
-                col3.subheader('Centrífuga A')
-                col3.metric('Vazão do Mel A (ton/h)', f'{Cristalizador_Cozedores['Processo de Cozimento']['Vazão do Melaço (ton/h) - Centrífuga A - II']:.2f}')
-                
-                st.header('Açúcar Total Produzido')
-                col1, col2 = st.columns(2)
-                col1.metric('Vazão do Açúcar Total (ton/h)', f'{Cristalizador_Cozedores['Processo de Cozimento']['Vazão de Açúcar (ton/h) - Centrífuga A - II']:.2f}')
-                col2.metric('Vazão do Açúcar Total (ton/h)',
-                            f'{Cristalizador_Cozedores['Processo de Cozimento']['Vazão Total de Açúcar (ton/h) - Resumo'] * Extracao['Extração']['Disponibilidade Geral (h)']:.2f}',
-                            delta=f'Sacas = {Cristalizador_Cozedores['Processo de Cozimento']['Vazão Total de Açúcar (ton/h) - Resumo'] * Extracao['Extração']['Disponibilidade Geral (h)'] * 1000/50:.0f}')"""
                 st.divider()
     
         if 'simulacao_enviada' in st.session_state and st.session_state['simulacao_enviada'] and nivel in ['Destilaria', 'Gestão']:

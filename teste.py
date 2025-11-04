@@ -165,13 +165,13 @@ def calcular_evaporadores_otimizado(
             Cp_list[i + 1] = 1 - 0.006 * brix_list[i + 1]
             taxaEvap[i] = vapGeradoTotal_list[i]/listaEvap[i]
 
-        return brix_list[-1], brix_list, ConsVap_list, vazVap_list, vapGeradoTotal, vazao_list, Cp_list, VapUtil_list, taxaEvap, temp_caldo_ajustada, vazSangria_list
+        return brix_list[-1], brix_list, ConsVap_list, vazVap_list, vapGeradoTotal, vazao_list, Cp_list, VapUtil_list, taxaEvap
 
     # Ajuste automático como antes, mas adaptado para usar press_vapor local
     melhor_brix, melhor_par, melhor_cons = None, (0, 0), 0.0
     for m1 in np.linspace(5, 15, 20):
         for m2 in np.linspace(1500, 2500, 20):
-            brix_final, brix_list, ConsVap_list, vazVap_list, vapGeradoTotal, vazao_list, Cp_list, VapUtil_list, taxaEvap, temp_caldo_ajustada, vazSangria_list = simular(m1, m2, press_vapor)
+            brix_final, brix_list, ConsVap_list, vazVap_list, vapGeradoTotal, vazao_list, Cp_list, VapUtil_list, taxaEvap = simular(m1, m2, press_vapor)
             if alvo_brix_final[0] <= brix_final <= alvo_brix_final[1]:
                 melhor_brix = brix_final
                 melhor_par = (m1, m2)
@@ -185,35 +185,77 @@ def calcular_evaporadores_otimizado(
         melhor_erro = 1e12
         for m1 in np.linspace(5, 15, 40):
             for m2 in np.linspace(1200, 2800, 40):
-                brix_final, brix_list, ConsVap_list, vazVap_list, vapGeradoTotal, vazao_list, Cp_list, VapUtil_list, taxaEvap, temp_caldo_ajustada, vazSangria_list = simular(m1, m2, press_vapor)
+                brix_final, brix_list, ConsVap_list, vazVap_list, vapGeradoTotal, vazao_list, Cp_list, VapUtil_list, taxaEvap = simular(m1, m2, press_vapor)
                 erro = abs(brix_final - alvo)
                 if erro < melhor_erro:
                     melhor_erro = erro
                     melhor_par = (m1, m2)
                     melhor_brix = brix_final
-        brix_final, brix_lista, ConsVap_list, vazVap_list, vapGeradoTotal, vazao_list, Cp_list, VapUtil_list, taxaEvap, temp_caldo_ajustada, vazSangria_list = simular(*melhor_par, press_vapor)
+        brix_final, brix_lista, ConsVap_list, vazVap_list, vapGeradoTotal, vazao_list, Cp_list, VapUtil_list, taxaEvap = simular(*melhor_par, press_vapor)
         melhor_cons = float(np.sum(ConsVap_list))
     else:
-        brix_final, brix_lista, ConsVap_list, vazVap_list, vapGeradoTotal, vazao_list, Cp_list, VapUtil_list, taxaEvap,temp_caldo_ajustada, vazSangria_list = simular(*melhor_par, press_vapor)
+        brix_final, brix_lista, ConsVap_list, vazVap_list, vapGeradoTotal, vazao_list, Cp_list, VapUtil_list, taxaEvap = simular(*melhor_par, press_vapor)
 
     consumo_total_vapor = float(np.sum(ConsVap_list))
     vapor_entrada_12 = float(vazVap_list[0] + vazVap_list[1])
 
-    resultados = {
-        'Evaporadores': {
-            "Brix Final (º)": round(brix_final, 2),
-            "Brix Efeitos (º)": arrumar_lista(brix_lista),
-            "Consumo Total de Vapor (kg/h)": round(consumo_total_vapor, 6),
-            "Lista Consumo por Efeito (kg/h)": arrumar_lista(ConsVap_list),
-            "Lista Vapor Entrada por Efeito (kg/h)": arrumar_lista(vazVap_list),
-            "Injeção de Vapor VE (kg/h)": round(vapor_entrada_12, 2),
-            "Taxa de Evaporação (%)": arrumar_lista(taxaEvap),
-            "Lista de Vapores Gerados (kg/h)": arrumar_lista(vapGeradoTotal),
-            "Vazão de Caldo em Cada Efeito (kg/h)": arrumar_lista(vazao_list),
-            "Lista de Cp do Caldo (kcal/kg)": arrumar_lista(Cp_list),
-            "Lista de Vapor Útil (kg/h)": arrumar_lista(VapUtil_list),
-            "Lista de Temperatura em cada Efeito (ºC)": arrumar_lista(temp_caldo_ajustada),
-            "Lista de Sangrias em cada efeito (kg/h)": arrumar_lista(vazSangria_list)
-        }
+    return {
+        "Melhores Multiplicadores": melhor_par,
+        "Brix Final": round(brix_final, 4),
+        "Brix Efeitos": arrumar_lista(brix_lista),
+        "Consumo Total de Vapor (kg/h)": round(consumo_total_vapor, 6),
+        "Lista Consumo por Efeito (kg/h)": arrumar_lista(ConsVap_list),
+        "Lista Vapor Entrada por Efeito (kg/h)": arrumar_lista(vazVap_list),
+        "Vapor entrada efe1+efe2 (kg/h)": round(vapor_entrada_12, 2),
+        "Taxa de Evaporação": taxaEvap
     }
-    return resultados
+
+# Agora: varrer pressões do vapor vivo e coletar consumo e brix final
+pressures = np.linspace(1.5, 3.0, 15)  # 16 pontos entre 1.5 e 3.0 bar
+results = []
+
+for p in pressures:
+    res = calcular_evaporadores_otimizado(press_vapor=float(p))
+    results.append({
+        "press_vapor": float(p),
+        "consumo_total_vapor": res["Consumo Total de Vapor (kg/h)"],
+        "vapor entrada": res["Vapor entrada efe1+efe2 (kg/h)"],
+        "brix_final": res["Brix Final"],
+        "mul_1": res["Melhores Multiplicadores"][0],
+        "mul_2": res["Melhores Multiplicadores"][1],
+        "Taxa de Evaporadação": res["Lista Vapor Entrada por Efeito (kg/h)"]
+    })
+
+df_results = pd.DataFrame(results)
+
+# Mostrar tabela ao usuário
+try:
+    # caas_jupyter_tools.display_dataframe_to_user se disponível
+    from caas_jupyter_tools import display_dataframe_to_user
+    display_dataframe_to_user("Variação Pressão vs Consumo e Brix", df_results)
+except Exception:
+    display = df_results.head(20)
+    print(display.to_string(index=False))
+
+# Gráfico 1: Consumo total de vapor x Pressão
+plt.figure(figsize=(8,4))
+plt.plot(df_results["press_vapor"], df_results["vapor entrada"], marker='o')
+plt.title("Consumo total de vapor (kg/h) vs Pressão do vapor vivo (bar)")
+plt.xlabel("Pressão do vapor vivo (bar)")
+plt.ylabel("Consumo total de vapor (kg/h)")
+plt.grid(True)
+plt.tight_layout()
+plt.show()
+
+# Gráfico 2: Brix final x Pressão
+plt.figure(figsize=(8,4))
+plt.plot(df_results["press_vapor"], df_results["brix_final"], marker='o')
+plt.title("Brix final vs Pressão do vapor vivo (bar)")
+plt.xlabel("Pressão do vapor vivo (bar)")
+plt.ylabel("Brix final (°Bx)")
+plt.grid(True)
+plt.tight_layout()
+plt.show()
+
+# Salvar resultados em variável para o usuário
+df_results
